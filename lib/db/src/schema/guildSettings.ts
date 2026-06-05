@@ -6,6 +6,8 @@ export const guildSettingsTable = pgTable("guild_settings", {
   guildId: text("guild_id").primaryKey(),
   logChannelId: text("log_channel_id"),
   transcriptChannelId: text("transcript_channel_id"),
+  tryoutChannelId: text("tryout_channel_id"),
+  tryoutRoles: text("tryout_roles").default("[]"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

@@ -18,6 +18,7 @@ import { db } from "@workspace/db";
 import { panelsTable, ticketsTable, transcriptsTable, guildSettingsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { registerTryoutCommands, deployTryoutCommands } from "./tryout";
 
 const PREFIX = "$";
 
@@ -32,14 +33,16 @@ export function initBot(token: string) {
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
-      GatewayIntentBits.MessageContent,
-      GatewayIntentBits.GuildMembers,
     ],
     partials: [Partials.Channel, Partials.Message],
   });
 
   client.once(Events.ClientReady, (c) => {
     logger.info({ tag: c.user.tag }, "Discord bot ready");
+    registerTryoutCommands(client);
+    deployTryoutCommands(client).catch((err) => {
+      logger.warn({ err }, "Failed to deploy tryout commands");
+    });
   });
 
   client.on(Events.MessageCreate, handleMessage);
