@@ -1,0 +1,55 @@
+import { Switch, Route, Router as WouterRouter } from "wouter";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import NotFound from "@/pages/not-found";
+
+import { Layout } from "@/components/layout";
+import Dashboard from "@/pages/dashboard";
+import Panels from "@/pages/panels/index";
+import NewPanel from "@/pages/panels/new";
+import PanelDetail from "@/pages/panels/[id]";
+import Tickets from "@/pages/tickets/index";
+import TicketDetail from "@/pages/tickets/[id]";
+import Settings from "@/pages/settings";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 1000 * 60, // 1 minute
+    },
+  },
+});
+
+function Router() {
+  return (
+    <Layout>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/panels" component={Panels} />
+        <Route path="/panels/new" component={NewPanel} />
+        <Route path="/panels/:id" component={PanelDetail} />
+        <Route path="/tickets" component={Tickets} />
+        <Route path="/tickets/:id" component={TicketDetail} />
+        <Route path="/settings" component={Settings} />
+        <Route component={NotFound} />
+      </Switch>
+    </Layout>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <Router />
+        </WouterRouter>
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;

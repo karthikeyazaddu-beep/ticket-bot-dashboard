@@ -1,22 +1,29 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Ticket Bot Dashboard API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: panels
+    description: Ticket panel management
+  - name: tickets
+    description: Ticket management
+  - name: transcripts
+    description: Ticket transcripts
+  - name: settings
+    description: Bot settings per guild
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +31,277 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /panels:
+    get:
+      operationId: listPanels
+      tags: [panels]
+      summary: List all panels
+      parameters:
+        - name: guildId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of panels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Panel"
+    post:
+      operationId: createPanel
+      tags: [panels]
+      summary: Create a panel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PanelInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Panel"
+
+  /panels/{id}:
+    get:
+      operationId: getPanel
+      tags: [panels]
+      summary: Get a panel by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Panel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Panel"
+        "404":
+          description: Not found
+    patch:
+      operationId: updatePanel
+      tags: [panels]
+      summary: Update a panel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PanelUpdate"
+      responses:
+        "200":
+          description: Updated panel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Panel"
+    delete:
+      operationId: deletePanel
+      tags: [panels]
+      summary: Delete a panel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /panels/{id}/send:
+    post:
+      operationId: sendPanel
+      tags: [panels]
+      summary: Send panel embed to a Discord channel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendPanelInput"
+      responses:
+        "200":
+          description: Sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendPanelResult"
+
+  /tickets:
+    get:
+      operationId: listTickets
+      tags: [tickets]
+      summary: List tickets
+      parameters:
+        - name: guildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, closed]
+        - name: panelId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of tickets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ticket"
+
+  /tickets/{id}:
+    get:
+      operationId: getTicket
+      tags: [tickets]
+      summary: Get a ticket by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ticket with transcript
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketDetail"
+        "404":
+          description: Not found
+
+  /tickets/stats:
+    get:
+      operationId: getTicketStats
+      tags: [tickets]
+      summary: Get ticket statistics
+      parameters:
+        - name: guildId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ticket stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketStats"
+
+  /transcripts/{ticketId}:
+    get:
+      operationId: getTranscript
+      tags: [transcripts]
+      summary: Get transcript for a ticket
+      parameters:
+        - name: ticketId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Transcript
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transcript"
+        "404":
+          description: Not found
+
+  /settings/{guildId}:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get settings for a guild
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuildSettings"
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update settings for a guild
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuildSettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuildSettings"
+
+  /guilds:
+    get:
+      operationId: listGuilds
+      tags: [settings]
+      summary: List guilds the bot is in
+      responses:
+        "200":
+          description: List of guilds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Guild"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +312,244 @@ components:
       required:
         - status
 
+    Panel:
+      type: object
+      required: [id, guildId, name, emoji, description, createdAt]
+      properties:
+        id:
+          type: integer
+        guildId:
+          type: string
+        name:
+          type: string
+        emoji:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        categoryId:
+          type: ["string", "null"]
+        staffRoleIds:
+          type: array
+          items:
+            type: string
+        color:
+          type: ["string", "null"]
+        welcomeMessage:
+          type: ["string", "null"]
+        ticketCount:
+          type: integer
+        createdAt:
+          type: string
+
+    PanelInput:
+      type: object
+      required: [guildId, name, emoji, description]
+      properties:
+        guildId:
+          type: string
+        name:
+          type: string
+        emoji:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        categoryId:
+          type: string
+        staffRoleIds:
+          type: array
+          items:
+            type: string
+        color:
+          type: string
+        welcomeMessage:
+          type: string
+
+    PanelUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        emoji:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+        categoryId:
+          type: string
+        staffRoleIds:
+          type: array
+          items:
+            type: string
+        color:
+          type: string
+        welcomeMessage:
+          type: string
+
+    SendPanelInput:
+      type: object
+      required: [channelId]
+      properties:
+        channelId:
+          type: string
+
+    SendPanelResult:
+      type: object
+      required: [success, messageId]
+      properties:
+        success:
+          type: boolean
+        messageId:
+          type: string
+
+    Ticket:
+      type: object
+      required: [id, guildId, panelId, panelName, channelId, userId, userName, status, createdAt]
+      properties:
+        id:
+          type: integer
+        guildId:
+          type: string
+        panelId:
+          type: integer
+        panelName:
+          type: string
+        panelEmoji:
+          type: string
+        channelId:
+          type: string
+        userId:
+          type: string
+        userName:
+          type: string
+        status:
+          type: string
+          enum: [open, closed]
+        createdAt:
+          type: string
+        closedAt:
+          type: ["string", "null"]
+
+    TicketDetail:
+      type: object
+      required: [id, guildId, panelId, panelName, channelId, userId, userName, status, createdAt]
+      properties:
+        id:
+          type: integer
+        guildId:
+          type: string
+        panelId:
+          type: integer
+        panelName:
+          type: string
+        panelEmoji:
+          type: string
+        channelId:
+          type: string
+        userId:
+          type: string
+        userName:
+          type: string
+        status:
+          type: string
+          enum: [open, closed]
+        createdAt:
+          type: string
+        closedAt:
+          type: ["string", "null"]
+        transcript:
+          $ref: "#/components/schemas/Transcript"
+
+    TicketStats:
+      type: object
+      required: [total, open, closed, byPanel]
+      properties:
+        total:
+          type: integer
+        open:
+          type: integer
+        closed:
+          type: integer
+        byPanel:
+          type: array
+          items:
+            $ref: "#/components/schemas/PanelStat"
+
+    PanelStat:
+      type: object
+      required: [panelId, panelName, panelEmoji, count]
+      properties:
+        panelId:
+          type: integer
+        panelName:
+          type: string
+        panelEmoji:
+          type: string
+        count:
+          type: integer
+
+    Transcript:
+      type: object
+      required: [id, ticketId, messages, createdAt]
+      properties:
+        id:
+          type: integer
+        ticketId:
+          type: integer
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranscriptMessage"
+        createdAt:
+          type: string
+
+    TranscriptMessage:
+      type: object
+      required: [authorId, authorName, content, timestamp]
+      properties:
+        authorId:
+          type: string
+        authorName:
+          type: string
+        authorAvatar:
+          type: ["string", "null"]
+        content:
+          type: string
+        timestamp:
+          type: string
+
+    GuildSettings:
+      type: object
+      required: [guildId]
+      properties:
+        guildId:
+          type: string
+        logChannelId:
+          type: ["string", "null"]
+        transcriptChannelId:
+          type: ["string", "null"]
+
+    GuildSettingsUpdate:
+      type: object
+      properties:
+        logChannelId:
+          type: string
+        transcriptChannelId:
+          type: string
+
+    Guild:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        iconUrl:
+          type: ["string", "null"]
+        memberCount:
+          type: ["integer", "null"]
