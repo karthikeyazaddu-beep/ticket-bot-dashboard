@@ -8,6 +8,10 @@ export const guildSettingsTable = pgTable("guild_settings", {
   transcriptChannelId: text("transcript_channel_id"),
   tryoutChannelId: text("tryout_channel_id"),
   tryoutRoles: text("tryout_roles").default("[]"),
+  entryChannelId: text("entry_channel_id"),
+  entryRoleId: text("entry_role_id"),
+  bracketChannelId: text("bracket_channel_id"),
+  tournamentChannelId: text("tournament_channel_id"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

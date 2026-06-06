@@ -13,12 +13,14 @@ import {
   Message,
   ButtonInteraction,
   Collection,
+  GuildMember,
 } from "discord.js";
 import { db } from "@workspace/db";
-import { panelsTable, ticketsTable, transcriptsTable, guildSettingsTable } from "@workspace/db";
+import { panelsTable, ticketsTable, transcriptsTable, guildSettingsTable, tournamentsTable, tournamentEntriesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { registerTryoutCommands, deployTryoutCommands } from "./tryout";
+import { registerTournamentCommands, deployTournamentCommands } from "./tournament";
 
 const PREFIX = "$";
 
@@ -43,9 +45,14 @@ export function initBot(token: string) {
     deployTryoutCommands(client).catch((err) => {
       logger.warn({ err }, "Failed to deploy tryout commands");
     });
+    registerTournamentCommands(client);
+    deployTournamentCommands(client).catch((err) => {
+      logger.warn({ err }, "Failed to deploy tournament commands");
+    });
   });
 
   client.on(Events.MessageCreate, handleMessage);
+  client.on(Events.MessageCreate, handleEntryMessage);
   client.on(Events.InteractionCreate, handleInteraction);
 
   client.login(token).catch((err) => {
@@ -439,4 +446,92 @@ async function handleEscalateButton(interaction: ButtonInteraction, targetPanelI
 
   await interaction.message.edit({ embeds: [interaction.message.embeds[0]], components: [] });
   await channel.send({ embeds: [embed] });
+}
+
+async function handleEntryMessage(message: Message) {
+  if (message.author.bot) return;
+  if (!message.guild) return;
+
+  const [settings] = await db
+    .select()
+    .from(guildSettingsTable)
+    .where(eq(guildSettingsTable.guildId, message.guildId!));
+
+  if (!settings || !settings.entryChannelId || !settings.entryRoleId) return;
+  if (message.channelId !== settings.entryChannelId) return;
+
+  const member = message.member as GuildMember;
+  if (!member) return;
+
+  try {
+    await member.roles.add(settings.entryRoleId);
+  } catch (err) {
+    logger.warn({ err }, "Could not add entry role");
+  }
+
+  const [tournament] = await db
+    .select()
+    .from(tournamentsTable)
+    .where(
+      and(
+        eq(tournamentsTable.guildId, message.guildId!),
+        eq(tournamentsTable.status, "open")
+      )
+    )
+    .orderBy(tournamentsTable.createdAt)
+    .limit(1);
+
+  if (!tournament) return;
+
+  const existingEntry = await db
+    .select()
+    .from(tournamentEntriesTable)
+    .where(
+      and(
+        eq(tournamentEntriesTable.tournamentId, tournament.id),
+        eq(tournamentEntriesTable.userId, message.author.id)
+      )
+    )
+    .limit(1);
+
+  if (existingEntry.length > 0) return;
+
+  await db.insert(tournamentEntriesTable).values({
+    tournamentId: tournament.id,
+    userId: message.author.id,
+    userName: message.author.tag,
+    userAvatar: message.author.displayAvatarURL() ?? null,
+  });
+
+  const entries = await db
+    .select()
+    .from(tournamentEntriesTable)
+    .where(eq(tournamentEntriesTable.tournamentId, tournament.id));
+
+  const embed = new EmbedBuilder()
+    .setColor(0x57f287)
+    .setDescription(`✅ ${message.author.toString()} has entered **${tournament.name}**! (${entries.length}/${tournament.maxEntries})`);
+
+  await message.channel.send({ embeds: [embed] }).catch(() => {});
+
+  if (entries.length >= tournament.maxEntries) {
+    await db
+      .update(tournamentsTable)
+      .set({ status: "closed" })
+      .where(eq(tournamentsTable.id, tournament.id));
+
+    const channel = message.channel as TextChannel;
+    try {
+      await channel.permissionOverwrites.edit(message.guild!.id, { SendMessages: false });
+    } catch (err) {
+      logger.warn({ err }, "Could not lock entry channel");
+    }
+
+    const closeEmbed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setTitle("🔴 Entries Full!")
+      .setDescription(`**${tournament.name}** has reached ${tournament.maxEntries} entries.\nThe entry channel has been locked.\nUse "/threads" to start the tournament!`);
+
+    await message.channel.send({ embeds: [closeEmbed] }).catch(() => {});
+  }
 }
